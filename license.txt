@@ -1,0 +1,3 @@
+I don't care, do whatever.  Commercial, noncommercial, make a billion off my stupid file format.
+
+Note that the LZFSE code has an apple license.  If that overrides my "do whatever license", then go by the terms of that.
