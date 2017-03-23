@@ -1,3 +1,6 @@
+// License: Do whatever with the simple_stac_decoder code.  It took an hour to write, I'm not too attached to it.
+//			Follow the Apple OS license in the lzfse project though.
+
 
 #define _CRT_SECURE_NO_WARNINGS // go away, MSVC.  This ain't no secure program.
 
@@ -125,6 +128,7 @@ int main(int cArgs, char** pArgs)
 			break;
 		}
 
+		// warning: may not deal well with filesizes > 2gb.
 		fseek(pFile, startOfNextChunk, SEEK_SET);
 		continue;
 	out_of_memory:
