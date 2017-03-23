@@ -15,17 +15,24 @@ int main(int cArgs, char** pArgs)
 	}
 
 	FILE* pFile = fopen("h:\\temp\\Tulips.stac", "rb");
+	FILE* pOut = fopen("h:\\temp\\decimated.stac", "wb");
 
-	unsigned char* lsfseScratchBuffer = new unsigned char[lzfse_decode_scratch_size()];
+	unsigned char* lzfseScratchBuffer = new unsigned char[lzfse_decode_scratch_size()];
+	unsigned char* lzfseRecompressScratchBuffer = new unsigned char[lzfse_encode_scratch_size()];
 
 	// constant-sized buffers that we're going to need.
 	const int cbDecompressed = 640 * 480 * 2;
 	unsigned char* depthBuffer = new unsigned char[640 * 480 * 2];
 	float* depthInMillimetersBuffer = new float[640 * 480];
 
+	unsigned char* compressedBuffer = 0;
+
+	int ret = 0;
+
 	// we've opened our file!
 	// let's have at it
 	int cElementsRead = 0;
+	int cDepthFrames = 0;
 	while (!feof(pFile))
 	{
 		uint64_t type = 0;
@@ -63,11 +70,15 @@ int main(int cArgs, char** pArgs)
 		case 1: // LZFSE-compressed 640x480 depth data
 		{
 			// let's just trust this file is authored correctly and that this won't make us crash!
-			unsigned char* compressedBuffer = new unsigned char[cbRemainingInChunk];
+			if (compressedBuffer) {
+				delete[] compressedBuffer;
+				compressedBuffer = 0;
+			}
+			compressedBuffer = new unsigned char[cbRemainingInChunk];
 			if (!compressedBuffer)
 			{
 				printf("Ran out of memory while allocating a buffer for depth data from the chunk at filepos %lld\n", startOfThisChunk);
-				return 1;
+				goto out_of_memory;
 			}
 			cElementsRead = fread(compressedBuffer, cbRemainingInChunk, 1, pFile);
 			if (cElementsRead <= 0)
@@ -75,14 +86,14 @@ int main(int cArgs, char** pArgs)
 				goto unexpected_end;
 			}
 
-			lzfse_decode_buffer(depthBuffer, cbDecompressed, compressedBuffer, cbRemainingInChunk, lsfseScratchBuffer);
-
+			lzfse_decode_buffer(depthBuffer, cbDecompressed, compressedBuffer, cbRemainingInChunk, lzfseScratchBuffer);
 
 			// because it seemed that the depthInMillimeters frame from the structure sensor had slightly more depth resolution than the 11-bit shiftData
 			// buffer, I used it.  However, since my iPad mini 2 couldn't compress 640*480*float buffers at a good frame rate, I stretched each float out by
 			// multiplying by 6.5536 so that a 0-10m range would strech to the range that a short can hold.  Don't like it?  make your own depth type.
 			const int cPixels = 640 * 480;
 			const unsigned short* psDepthBuffer = (const unsigned short*)depthBuffer;
+			
 			for (int x = 0; x < cPixels; x++)
 			{
 				if (psDepthBuffer[x] == 65535 || psDepthBuffer[x] == 0)
@@ -116,9 +127,22 @@ int main(int cArgs, char** pArgs)
 
 		fseek(pFile, startOfNextChunk, SEEK_SET);
 		continue;
+	out_of_memory:
 	unexpected_end:
 		printf("Unexpected end of file at byte %d\n", ftell(pFile));
-		return 1;
+	    ret = 1;
+		break;
 
 	}
+
+	fclose(pFile);
+	fclose(pOut);
+
+	delete[] lzfseScratchBuffer;
+	delete[] lzfseRecompressScratchBuffer;
+	delete[] depthBuffer;
+	delete[] depthInMillimetersBuffer;
+	delete[] compressedBuffer;
+
+	return ret;
 }
