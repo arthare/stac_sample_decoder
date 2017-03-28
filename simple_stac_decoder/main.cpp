@@ -136,14 +136,22 @@ int main(int cArgs, char** pArgs)
 				fwrite(depthInMillimetersBuffer, 640 * 480 * sizeof(depthInMillimetersBuffer[0]), 1, pFrameOut);
 				printf("Wrote 640x480 floats to %s\n", strFilename.c_str());
 			}
-			printf("Decompressed depth at timestamp %.02f.  Do something cool with it!\n", timestamp);
-			for (int row = 0; row < 480; row++)
+			else
 			{
-				for (int col = 0; col < 640; col++)
+				// you're not in file-write mode (aka the 2nd parameter was not included or was zero).  I'll give you some motivation I guess?
+				printf("Decompressed depth at timestamp %.02f.  Do something cool with it!\n", timestamp);
+				for (int row = 0; row < 480; row++)
 				{
-					// it is now up to you, intrepid programmer, to make something of this data.
-					// make a model!  make some measurements!  do whatever!
+					for (int col = 0; col < 640; col++)
+					{
+						// fish out the depth pixel here
+						float thisPixelDepth = depthInMillimetersBuffer[row * 640 + col];
+
+						// it is now up to you, intrepid programmer, to make something of this data.
+						// make a model!  make some measurements!  do whatever!
+					}
 				}
+
 			}
 
 		    break;
