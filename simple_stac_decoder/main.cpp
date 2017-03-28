@@ -7,16 +7,24 @@
 #include "lzfse.h"
 #include <stdlib.h>
 #include <stdio.h>
-
+#include <sstream>
+#include <iostream>
+using namespace std;
 
 int main(int cArgs, char** pArgs)
 {
 	if (cArgs < 2)
 	{
-		printf("Usage: you gotta supply a filename.  Ex: >>simple_stac_decoder myFile.stac\n");
+		printf("Usage: you gotta supply a filename.  Ex: \n>>simple_stac_decoder myFile.stac <optional 1 or 0 for whether to output frames>\n");
 		return 0;
 	}
 
+	bool fOutputtingFrames = 0;
+	if (cArgs >= 3)
+	{
+		// 2nd argument is whether we're outputting frames
+		fOutputtingFrames = atoi(pArgs[2]);
+	}
 	FILE* pFile = fopen("h:\\temp\\Tulips.stac", "rb");
 	FILE* pOut = fopen("h:\\temp\\decimated.stac", "wb");
 
@@ -65,6 +73,9 @@ int main(int cArgs, char** pArgs)
 		const uint64_t startOfThisChunk = ftell(pFile);
 		const uint64_t startOfNextChunk = startOfThisChunk + cbRemainingInChunk;
 
+		FILE* pFrameOut = 0;
+
+
 		// so now we know the type of our buffer, its timestamp, and how much is remaining in it.
 		switch (type)
 		{
@@ -72,6 +83,15 @@ int main(int cArgs, char** pArgs)
 			break;
 		case 1: // LZFSE-compressed 640x480 depth data
 		{
+			string strFilename;
+			if (fOutputtingFrames)
+			{
+				stringstream ssFilename;
+				ssFilename << "frame" << cDepthFrames << ".bin";
+				strFilename = ssFilename.str();
+				pFrameOut = fopen(strFilename.c_str(), "wb");
+			}
+			cDepthFrames++;
 			// let's just trust this file is authored correctly and that this won't make us crash!
 			if (compressedBuffer) {
 				delete[] compressedBuffer;
@@ -110,6 +130,12 @@ int main(int cArgs, char** pArgs)
 				}
 			}
 
+			if (pFrameOut)
+			{
+				// if we're outputting frames, then let's output them!
+				fwrite(depthInMillimetersBuffer, 640 * 480 * sizeof(depthInMillimetersBuffer[0]), 1, pFrameOut);
+				printf("Wrote 640x480 floats to %s\n", strFilename.c_str());
+			}
 			printf("Decompressed depth at timestamp %.02f.  Do something cool with it!\n", timestamp);
 			for (int row = 0; row < 480; row++)
 			{
@@ -126,6 +152,11 @@ int main(int cArgs, char** pArgs)
 			break;
 		case 3: // file metadata
 			break;
+		}
+
+		if (pFrameOut)
+		{
+			fclose(pFrameOut);
 		}
 
 		// warning: may not deal well with filesizes > 2gb.
