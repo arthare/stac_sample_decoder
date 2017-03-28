@@ -25,8 +25,7 @@ int main(int cArgs, char** pArgs)
 		// 2nd argument is whether we're outputting frames
 		fOutputtingFrames = atoi(pArgs[2]);
 	}
-	FILE* pFile = fopen("h:\\temp\\Tulips.stac", "rb");
-	FILE* pOut = fopen("h:\\temp\\decimated.stac", "wb");
+	FILE* pFile = fopen(pArgs[1], "rb");
 
 	unsigned char* lzfseScratchBuffer = new unsigned char[lzfse_decode_scratch_size()];
 	unsigned char* lzfseRecompressScratchBuffer = new unsigned char[lzfse_encode_scratch_size()];
@@ -179,7 +178,6 @@ int main(int cArgs, char** pArgs)
 	}
 
 	fclose(pFile);
-	fclose(pOut);
 
 	delete[] lzfseScratchBuffer;
 	delete[] lzfseRecompressScratchBuffer;
