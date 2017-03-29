@@ -9,23 +9,39 @@
 #include <stdio.h>
 #include <sstream>
 #include <iostream>
+#include <Windows.h>
+#include "bmpWriter.h"
+
 using namespace std;
 
 int main(int cArgs, char** pArgs)
 {
 	if (cArgs < 2)
 	{
-		printf("Usage: you gotta supply a filename.  Ex: \n>>simple_stac_decoder myFile.stac <optional 1 or 0 for whether to output frames>\n");
+		printf("Usage: you gotta supply a filename.  Ex: \n>>simple_stac_decoder myFile.stac [bmp|bin]\n");
 		return 0;
 	}
 
-	bool fOutputtingFrames = 0;
+	bool fOutputtingBINs = 0;
+	bool fOutputtingBMPs = 0;
 	if (cArgs >= 3)
 	{
 		// 2nd argument is whether we're outputting frames
-		fOutputtingFrames = atoi(pArgs[2]);
+		if (!strcmp(pArgs[2], "bmp"))
+		{
+			fOutputtingBMPs = true;
+		}
+		else if (!strcmp(pArgs[2], "bin"))
+		{
+			fOutputtingBINs = true;
+		}
 	}
 	FILE* pFile = fopen(pArgs[1], "rb");
+	if (!pFile)
+	{
+		cerr << "Could not find " << pArgs[1] << endl;
+		return 1;
+	}
 
 	unsigned char* lzfseScratchBuffer = new unsigned char[lzfse_decode_scratch_size()];
 	unsigned char* lzfseRecompressScratchBuffer = new unsigned char[lzfse_encode_scratch_size()];
@@ -83,10 +99,10 @@ int main(int cArgs, char** pArgs)
 		case 1: // LZFSE-compressed 640x480 depth data
 		{
 			string strFilename;
-			if (fOutputtingFrames)
+			if (fOutputtingBINs || fOutputtingBMPs)
 			{
 				stringstream ssFilename;
-				ssFilename << "frame" << cDepthFrames << ".bin";
+				ssFilename << "frame" << cDepthFrames << (fOutputtingBINs ? ".bin" : ".bmp");
 				strFilename = ssFilename.str();
 				pFrameOut = fopen(strFilename.c_str(), "wb");
 			}
@@ -132,8 +148,17 @@ int main(int cArgs, char** pArgs)
 			if (pFrameOut)
 			{
 				// if we're outputting frames, then let's output them!
-				fwrite(depthInMillimetersBuffer, 640 * 480 * sizeof(depthInMillimetersBuffer[0]), 1, pFrameOut);
-				printf("Wrote 640x480 floats to %s\n", strFilename.c_str());
+				if (fOutputtingBINs)
+				{
+					fwrite(depthInMillimetersBuffer, 640 * 480 * sizeof(depthInMillimetersBuffer[0]), 1, pFrameOut);
+					printf("Wrote 640x480 floats to %s\n", strFilename.c_str());
+				}
+				else
+				{
+					outputBmp(pFrameOut, depthInMillimetersBuffer);
+					printf("Wrote bmp %s\n", strFilename.c_str());
+				}
+				
 			}
 			else
 			{
