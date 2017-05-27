@@ -11,8 +11,17 @@
 #include <iostream>
 #include <Windows.h>
 #include "bmpWriter.h"
+#include "plyWriter.h"
 
 using namespace std;
+
+enum OUTPUTMODE
+{
+	OUTPUTMODE_ENCOURAGEMENT = 0,
+	OUTPUTMODE_BIN = 1,
+	OUTPUTMODE_BMP = 2,
+	OUTPUTMODE_PLY = 3,
+};
 
 int main(int cArgs, char** pArgs)
 {
@@ -22,18 +31,21 @@ int main(int cArgs, char** pArgs)
 		return 0;
 	}
 
-	bool fOutputtingBINs = 0;
-	bool fOutputtingBMPs = 0;
+	OUTPUTMODE eOutputMode = OUTPUTMODE_ENCOURAGEMENT;
 	if (cArgs >= 3)
 	{
 		// 2nd argument is whether we're outputting frames
 		if (!strcmp(pArgs[2], "bmp"))
 		{
-			fOutputtingBMPs = true;
+			eOutputMode = OUTPUTMODE_BMP;
 		}
 		else if (!strcmp(pArgs[2], "bin"))
 		{
-			fOutputtingBINs = true;
+			eOutputMode = OUTPUTMODE_BIN;
+		}
+		else if (!strcmp(pArgs[2], "ply"))
+		{
+			eOutputMode = OUTPUTMODE_PLY;
 		}
 	}
 	FILE* pFile = fopen(pArgs[1], "rb");
@@ -99,12 +111,26 @@ int main(int cArgs, char** pArgs)
 		case 1: // LZFSE-compressed 640x480 depth data
 		{
 			string strFilename;
-			if (fOutputtingBINs || fOutputtingBMPs)
+			if (eOutputMode != OUTPUTMODE_ENCOURAGEMENT)
 			{
 				stringstream ssFilename;
-				ssFilename << "frame" << cDepthFrames << (fOutputtingBINs ? ".bin" : ".bmp");
+				ssFilename << "frame" << cDepthFrames;
+				const char* pszOpenMode = "wb";
+				switch (eOutputMode)
+				{
+				case OUTPUTMODE_BIN:
+					ssFilename << ".bin";
+					break;
+				case OUTPUTMODE_BMP:
+					ssFilename << ".bmp";
+					break;
+				case OUTPUTMODE_PLY:
+					ssFilename << ".ply";
+					pszOpenMode = "w";
+					break;
+				}
 				strFilename = ssFilename.str();
-				pFrameOut = fopen(strFilename.c_str(), "wb");
+				pFrameOut = fopen(strFilename.c_str(), pszOpenMode);
 			}
 			cDepthFrames++;
 			// let's just trust this file is authored correctly and that this won't make us crash!
@@ -148,17 +174,22 @@ int main(int cArgs, char** pArgs)
 			if (pFrameOut)
 			{
 				// if we're outputting frames, then let's output them!
-				if (fOutputtingBINs)
+				switch (eOutputMode)
 				{
+				case OUTPUTMODE_BIN:
 					fwrite(depthInMillimetersBuffer, 640 * 480 * sizeof(depthInMillimetersBuffer[0]), 1, pFrameOut);
 					printf("Wrote 640x480 floats to %s\n", strFilename.c_str());
-				}
-				else
-				{
+					break;
+				case OUTPUTMODE_BMP:
 					outputBmp(pFrameOut, depthInMillimetersBuffer);
 					printf("Wrote bmp %s\n", strFilename.c_str());
+					break;
+				case OUTPUTMODE_PLY:
+					// projection is handled inside WritePlyVertex.  I assume if I do another 3D output format that'll get split out
+					WritePlyFile(pFrameOut, depthInMillimetersBuffer);
+					printf("Wrote PLY frame to %s\n", strFilename.c_str());
+					break;
 				}
-				
 			}
 			else
 			{

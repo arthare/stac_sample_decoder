@@ -102,9 +102,9 @@ void outputBmp(FILE* fOut, const float* const pflDepths)
 			unsigned char byteRed = (unsigned char)(r * 255.0f);
 			unsigned char byteGreen = (unsigned char)(g * 255.0f);
 			unsigned char byteBlue = (unsigned char)(b * 255.0f);
-			bufRow[col * 3] = byteBlue;
-			bufRow[col * 3 + 1] = byteGreen;
-			bufRow[col * 3 + 2] = byteRed;
+			bufRow[col * bytesPerPixel] = byteBlue;
+			bufRow[col * bytesPerPixel + 1] = byteGreen;
+			bufRow[col * bytesPerPixel + 2] = byteRed;
 
 		}
 		fwrite(bufRow, sizeof(bufRow), 1, fOut);
